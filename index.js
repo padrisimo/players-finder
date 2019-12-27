@@ -1,10 +1,32 @@
 const Hapi = require("@hapi/hapi");
 const mongoose = require("mongoose");
-mongoose.connect("mongodb://localhost:27017/acme", { useNewUrlParser: true });
+mongoose.connect("mongodb://localhost:27017/acme", {
+  useUnifiedTopology: true,
+  useNewUrlParser: true
+});
 
 const PlayerModel = mongoose.model("player", {
-  nickName: String,
-  emai: String
+  nickName: { type: String, required: true },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      required: true
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
+  },
+  interest: [String],
+  age: { type: Number, required: true },
+  canHost: { type: Boolean, required: true }
+});
+
+const GameModel = mongoose.model("game", {
+  name: { type: String, required: true },
+  minPlayers: { type: Number, required: true },
+  maxPlayers: { type: Number, required: true }
 });
 
 const server = Hapi.server({
@@ -14,8 +36,8 @@ const server = Hapi.server({
 
 server.route({
   method: "POST",
-  path: "/players",
-  handler: async (request, reply) => {
+  path: "/addplayer",
+  handler: async (request, h) => {
     try {
       var player = new PlayerModel(request.payload);
       var result = await player.save();
@@ -26,6 +48,7 @@ server.route({
   }
 });
 
+// todo filter them by interesting games field
 server.route({
   method: "GET",
   path: "/players",
