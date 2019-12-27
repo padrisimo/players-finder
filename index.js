@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Inert = require("@hapi/inert");
 const Vision = require("@hapi/vision");
 const HapiSwagger = require("hapi-swagger");
+const Joi = require("@hapi/joi");
 
 mongoose.connect("mongodb://localhost:27017/acme", {
   useUnifiedTopology: true,
@@ -27,7 +28,7 @@ const PlayerModel = mongoose.model("player", {
   canHost: { type: Boolean, required: true }
 });
 
-const GameModel = mongoose.model("game", {
+const CustomGameModel = mongoose.model("game", {
   name: { type: String, required: true },
   minPlayers: { type: Number, required: true },
   maxPlayers: { type: Number, required: true }
@@ -49,6 +50,10 @@ server.route({
 server.route({
   method: "POST",
   path: "/addplayer",
+  options: {
+    tags: ["api"],
+    description: "add a new player"
+  },
   handler: async (request, h) => {
     try {
       var player = new PlayerModel(request.payload);
@@ -60,14 +65,81 @@ server.route({
   }
 });
 
-// todo filter them by interesting games field
+server.route({
+  method: "POST",
+  path: "/new/custom-game",
+  options: {
+    tags: ["api"],
+    description: "add a new custom game",
+    validate: {
+      payload: Joi.object({
+        name: Joi.string().required(),
+        minPlayers: Joi.number().required(),
+        maxPlayers: Joi.number().required()
+      })
+    }
+  },
+  handler: async (request, h) => {
+    try {
+      var game = new CustomGameModel(request.payload);
+      var result = await game.save();
+      return h.response(result);
+    } catch (error) {
+      return h.response(error).code(500);
+    }
+  }
+});
+
+server.route({
+  method: "POST",
+  path: "/new/risk",
+  options: {
+    tags: ["api"],
+    description: "add a new risk game",
+    validate: {
+      payload: Joi.object({
+        minPlayers: Joi.number().required(),
+        maxPlayers: Joi.number().required()
+      })
+    }
+  },
+  handler: async (request, h) => {
+    try {
+      var game = new CustomGameModel({ name: "Risk", ...request.payload });
+      var result = await game.save();
+      return h.response(result);
+    } catch (error) {
+      return h.response(error).code(500);
+    }
+  }
+});
+
 server.route({
   method: "GET",
   path: "/players",
-  options: { tags: ["api"], description: "get list of all players" },
+  options: {
+    tags: ["api"],
+    description: "get list of all players",
+    notes:
+      "u can pass an optional 'interest' filter as query string in the url like this /players?interest=Risk ",
+    validate: {
+      query: Joi.object({
+        interest: Joi.string()
+          .valid("Risk", "Chest", "Catan", "Others")
+          .optional()
+      })
+    }
+  },
+
   handler: async (request, h) => {
+    var params = request.query;
+
     try {
-      var player = await PlayerModel.find().exec();
+      var player = await PlayerModel.find(
+        Object.keys(request.query).length !== 0
+          ? { interest: params.interest }
+          : null
+      ).exec();
       return h.response(player);
     } catch (error) {
       return h.response(error).code(500);
@@ -78,7 +150,7 @@ server.route({
 const init = async () => {
   const swaggerOptions = {
     info: {
-      title: "Test API Documentation",
+      title: "Players Finder API",
       version: "0.1"
     }
   };

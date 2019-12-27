@@ -1,0 +1,18 @@
+{
+    "nickName":"Sipu",
+    "location":{
+       "type":"Point",
+       "coordinates":[
+          125.6,
+          10.1
+       ]
+    },
+    "interest":[
+       "Catan",
+       "Chess",
+       "Risk",
+       "Others"
+    ],
+    "age":36,
+    "canHost":false
+ }
