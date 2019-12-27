@@ -1,5 +1,9 @@
 const Hapi = require("@hapi/hapi");
 const mongoose = require("mongoose");
+const Inert = require("@hapi/inert");
+const Vision = require("@hapi/vision");
+const HapiSwagger = require("hapi-swagger");
+
 mongoose.connect("mongodb://localhost:27017/acme", {
   useUnifiedTopology: true,
   useNewUrlParser: true
@@ -35,6 +39,14 @@ const server = Hapi.server({
 });
 
 server.route({
+  method: "GET",
+  path: "/",
+  handler: (request, reply) => {
+    return reply.redirect("/documentation");
+  }
+});
+
+server.route({
   method: "POST",
   path: "/addplayer",
   handler: async (request, h) => {
@@ -52,6 +64,7 @@ server.route({
 server.route({
   method: "GET",
   path: "/players",
+  options: { tags: ["api"], description: "get list of all players" },
   handler: async (request, h) => {
     try {
       var player = await PlayerModel.find().exec();
@@ -63,6 +76,22 @@ server.route({
 });
 
 const init = async () => {
+  const swaggerOptions = {
+    info: {
+      title: "Test API Documentation",
+      version: "0.1"
+    }
+  };
+
+  await server.register([
+    Inert,
+    Vision,
+    {
+      plugin: HapiSwagger,
+      options: swaggerOptions
+    }
+  ]);
+
   await server.start();
   console.log("Server running on %s", server.info.uri);
 };
